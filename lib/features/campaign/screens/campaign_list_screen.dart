@@ -11,18 +11,20 @@ class CampaignListScreen extends StatefulWidget {
 class _CampaignListScreenState extends State<CampaignListScreen> {
   final _searchCtrl = TextEditingController();
 
-  // Temporary UI-only mock items so the app looks real.
-  // Later this comes from API via a controller.
-  final List<_CampaignItem> _mockCampaigns = const [
+  // UI-only mock data so the app looks real.
+  // Later: replace with Riverpod + API.
+  final List<_CampaignItem> _items = const [
     _CampaignItem(
-      name: 'EXTERNAL_AGENT_SETTLEMENT',
+      code: 'PR_ACCOUNTS',
+      title: 'PR Accounts',
       status: 'Published',
-      updatedAt: '2026-02-16',
+      updatedAt: '2026-03-01',
     ),
     _CampaignItem(
-      name: 'DPD_30_60_ACTIVE_PTP',
+      code: 'EXTERNAL_AGENT_SETTLEMENT',
+      title: 'External Agent Settlement',
       status: 'Draft',
-      updatedAt: '2026-02-15',
+      updatedAt: '2026-02-26',
     ),
   ];
 
@@ -36,25 +38,27 @@ class _CampaignListScreenState extends State<CampaignListScreen> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    // Filter mock list by search text (simple UI behavior).
-    final query = _searchCtrl.text.trim().toLowerCase();
-    final filtered = query.isEmpty
-        ? _mockCampaigns
-        : _mockCampaigns
-              .where((c) => c.name.toLowerCase().contains(query))
+    final q = _searchCtrl.text.trim().toLowerCase();
+    final filtered = q.isEmpty
+        ? _items
+        : _items
+              .where(
+                (c) =>
+                    c.code.toLowerCase().contains(q) ||
+                    c.title.toLowerCase().contains(q),
+              )
               .toList();
 
     return Scaffold(
       body: SafeArea(
         child: Column(
           children: [
-            // Top header section
+            // Header block
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Title row + Create button
                   Row(
                     children: [
                       Expanded(
@@ -71,25 +75,22 @@ class _CampaignListScreenState extends State<CampaignListScreen> {
                     ],
                   ),
                   const SizedBox(height: 10),
-
-                  // Subheading
                   Text(
-                    'Build and publish campaign logic without writing SQL.',
+                    'Configure campaign allocation rules without writing SQL.',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: Colors.black.withOpacity(0.60),
                     ),
                   ),
                   const SizedBox(height: 14),
 
-                  // Search bar
+                  // Search
                   TextField(
                     controller: _searchCtrl,
                     onChanged: (_) => setState(() {}),
-                    textInputAction: TextInputAction.search,
                     decoration: InputDecoration(
-                      hintText: 'Search campaigns (e.g. EXTERNAL_AGENT...)',
+                      hintText: 'Search by code or title (e.g. PR_ACCOUNTS)',
                       prefixIcon: const Icon(Icons.search),
-                      suffixIcon: query.isEmpty
+                      suffixIcon: q.isEmpty
                           ? null
                           : IconButton(
                               tooltip: 'Clear',
@@ -107,7 +108,7 @@ class _CampaignListScreenState extends State<CampaignListScreen> {
 
             const SizedBox(height: 6),
 
-            // Content area
+            // Content
             Expanded(
               child: filtered.isEmpty
                   ? _EmptyState(onCreate: () => context.goNamed('ruleBuilder'))
@@ -119,8 +120,8 @@ class _CampaignListScreenState extends State<CampaignListScreen> {
                         return _CampaignCard(
                           item: item,
                           onTap: () {
-                            // Later: open details / edit screen.
-                            // For now: open rule builder.
+                            // Later: open edit wizard with this campaign code.
+                            // For now: open rule builder directly.
                             context.goNamed('ruleBuilder');
                           },
                         );
@@ -135,7 +136,7 @@ class _CampaignListScreenState extends State<CampaignListScreen> {
 }
 
 /// ----------------------
-/// UI widgets (kept in same file for now)
+/// Local UI Widgets
 /// ----------------------
 
 class _CampaignCard extends StatelessWidget {
@@ -147,9 +148,10 @@ class _CampaignCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final statusColor = item.status == 'Published'
-        ? Colors.green.withOpacity(0.15)
-        : Colors.orange.withOpacity(0.15);
+
+    final badgeColor = item.status == 'Published'
+        ? Colors.green.withOpacity(0.14)
+        : Colors.orange.withOpacity(0.16);
 
     return Card(
       child: InkWell(
@@ -158,9 +160,7 @@ class _CampaignCard extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Left icon box
               Container(
                 width: 42,
                 height: 42,
@@ -172,45 +172,50 @@ class _CampaignCard extends StatelessWidget {
               ),
               const SizedBox(width: 12),
 
-              // Main info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item.name, style: theme.textTheme.titleMedium),
-                    const SizedBox(height: 6),
+                    Text(item.code, style: theme.textTheme.titleMedium),
+                    const SizedBox(height: 4),
                     Text(
-                      'Last updated: ${item.updatedAt}',
+                      item.title,
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: Colors.black.withOpacity(0.55),
+                        color: Colors.black.withOpacity(0.65),
                       ),
                     ),
                     const SizedBox(height: 10),
-
-                    // Status chip
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: statusColor,
-                        borderRadius: BorderRadius.circular(999),
-                      ),
-                      child: Text(
-                        item.status,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: badgeColor,
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            item.status,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 10),
+                        Text(
+                          'Updated: ${item.updatedAt}',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: Colors.black.withOpacity(0.55),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
 
-              const SizedBox(width: 10),
-
-              // Arrow
               Icon(Icons.chevron_right, color: Colors.black.withOpacity(0.35)),
             ],
           ),
@@ -222,7 +227,6 @@ class _CampaignCard extends StatelessWidget {
 
 class _EmptyState extends StatelessWidget {
   const _EmptyState({required this.onCreate});
-
   final VoidCallback onCreate;
 
   @override
@@ -238,10 +242,10 @@ class _EmptyState extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('No campaigns yet', style: theme.textTheme.titleMedium),
+                Text('No campaigns found', style: theme.textTheme.titleMedium),
                 const SizedBox(height: 8),
                 Text(
-                  'Create your first campaign rule set using the drag rule builder.',
+                  'Create your first campaign. You can define products, sections, and rules.',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: Colors.black.withOpacity(0.60),
                   ),
@@ -261,14 +265,16 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
-/// Temporary UI model (replace later with real model from API)
+/// Temporary UI-only model
 class _CampaignItem {
-  final String name;
+  final String code;
+  final String title;
   final String status;
   final String updatedAt;
 
   const _CampaignItem({
-    required this.name,
+    required this.code,
+    required this.title,
     required this.status,
     required this.updatedAt,
   });
